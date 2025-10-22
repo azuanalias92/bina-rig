@@ -1,5 +1,7 @@
-name = "bina-rig"
-main = "src/index.ts"
-compatibility_date = "2025-10-22"
-workers_dev = true
-send_metrics = false
+  main = ".open-next/worker.js"
+  name = "bina-rig"
+  compatibility_date = "2025-03-25"
+  compatibility_flags = ["nodejs_compat"]
+  [assets]
+  directory = ".open-next/assets"
+  binding = "ASSETS"
