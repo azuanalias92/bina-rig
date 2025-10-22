@@ -1,0 +1,5 @@
+name = "bina-rig-worker"
+main = "src/index.ts"
+compatibility_date = "2025-10-22"
+workers_dev = true
+send_metrics = false
