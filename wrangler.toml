@@ -1,4 +1,4 @@
-name = "bina-rig-worker"
+name = "bina-rig"
 main = "src/index.ts"
 compatibility_date = "2025-10-22"
 workers_dev = true
