@@ -21,7 +21,7 @@ export function ThemeToggle({ labels }: { labels?: ThemeToggleLabels }) {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="sm" disabled className="text-black">
+      <Button variant="outline" size="sm" disabled className="px-2 sm:px-3">
         {labels?.loading ?? "Loading theme…"}
       </Button>
     );
@@ -36,16 +36,10 @@ export function ThemeToggle({ labels }: { labels?: ThemeToggleLabels }) {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label="Toggle theme"
       title={`Switch to ${isDark ? "light" : "dark"} mode`}
-      className="text-black hover:text-black px-2 sm:px-3"
+      className="px-2 sm:px-3 text-black border border-black dark:text-white dark:border-white"
     >
-      {isDark ? (
-        <IoSunnyOutline className="mr-1 sm:mr-2 size-4 text-black" />
-      ) : (
-        <IoMoonOutline className="mr-1 sm:mr-2 size-4 text-black" />
-      )}
-      <span className="hidden sm:inline">
-        {isDark ? labels?.lightMode ?? "Light Mode" : labels?.darkMode ?? "Dark Mode"}
-      </span>
+      {isDark ? <IoSunnyOutline className="mr-1 sm:mr-2 size-4" /> : <IoMoonOutline className="mr-1 sm:mr-2 size-4" />}
+      <span className="hidden sm:inline">{isDark ? labels?.lightMode ?? "Light Mode" : labels?.darkMode ?? "Dark Mode"}</span>
     </Button>
   );
 }

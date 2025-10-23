@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -16,7 +16,7 @@ type Locale = (typeof locales)[number];
 function useLocale(): Locale {
   const pathname = usePathname() ?? "/ms";
   const seg = pathname.split("/")[1];
-  return (locales.includes(seg as Locale) ? (seg as Locale) : "ms");
+  return locales.includes(seg as Locale) ? (seg as Locale) : "ms";
 }
 
 export function SiteNavbar() {
@@ -36,7 +36,7 @@ export function SiteNavbar() {
   return (
     <>
       <Link href={`/${locale}`} className="font-semibold tracking-tight flex items-center gap-2">
-        <img src="/icon.svg" alt="BinaRig icon" width={20} height={20} />
+        <img src="/icon.svg" alt="BinaRig icon" width={40} height={40} />
         <span className="font-heading tracking-tight">BinaRig</span>
       </Link>
       <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
@@ -45,7 +45,7 @@ export function SiteNavbar() {
           size="sm"
           onClick={toggleLocale}
           aria-label="Switch language"
-          className="px-2 sm:px-3"
+          className="px-2 sm:px-3 text-black border border-black dark:text-white dark:border-white"
         >
           <IoLanguageOutline className="mr-1 sm:mr-2 size-4" />
           {locale === "ms" ? (

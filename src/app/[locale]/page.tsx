@@ -1,44 +1,16 @@
-'use client';
+"use client";
 
 import React, { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { dictEn } from "@/dictionaries/en";
 import { dictMs } from "@/dictionaries/ms";
 import { formatMYR } from "@/lib/utils";
-import {
-  IoRefreshOutline,
-  IoSaveOutline,
-  IoOptionsOutline,
-  IoTrashOutline,
-  IoDownloadOutline,
-  IoCartOutline,
-  IoCheckmarkOutline,
-  IoCloseOutline,
-} from "react-icons/io5";
+import { IoRefreshOutline, IoSaveOutline, IoOptionsOutline, IoTrashOutline, IoDownloadOutline, IoCartOutline, IoCheckmarkOutline, IoCloseOutline } from "react-icons/io5";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { ArrowUpDown } from "lucide-react";
@@ -49,7 +21,7 @@ type Locale = (typeof locales)[number];
 function useLocale(): Locale {
   const pathname = usePathname() ?? "/ms";
   const seg = pathname.split("/")[1];
-  return (locales.includes(seg as Locale) ? (seg as Locale) : "ms");
+  return locales.includes(seg as Locale) ? (seg as Locale) : "ms";
 }
 
 type Part = {
@@ -126,7 +98,7 @@ const baseCategories = [
   { key: "cooler", label: "CPU Cooler" },
 ] as const;
 
-type CategoryKey = typeof baseCategories[number]["key"];
+type CategoryKey = (typeof baseCategories)[number]["key"];
 
 type Dict = typeof dictEn;
 
@@ -151,17 +123,9 @@ export default function Home() {
   });
   const [openCategory, setOpenCategory] = useState<CategoryKey | null>(null);
 
-  const total = useMemo(
-    () =>
-      Object.values(selected).reduce((sum, part) => sum + (part?.price ?? 0), 0),
-    [selected]
-  );
+  const total = useMemo(() => Object.values(selected).reduce((sum, part) => sum + (part?.price ?? 0), 0), [selected]);
 
-  const totalWatt = useMemo(
-    () =>
-      Object.values(selected).reduce((sum, part) => sum + (part?.watt ?? 0), 0),
-    [selected]
-  );
+  const totalWatt = useMemo(() => Object.values(selected).reduce((sum, part) => sum + (part?.watt ?? 0), 0), [selected]);
 
   const resetAll = () => {
     const empty: Record<CategoryKey, Part | null> = {
@@ -211,9 +175,23 @@ export default function Home() {
             const part = selected[key];
             return (
               <Card key={key} className="flex flex-col">
-                <CardHeader className="flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-lg">{label}</CardTitle>
-                  {part ? <Badge>{part.brand}</Badge> : <Badge variant="outline">{dict.general.notSelected}</Badge>}
+                <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-0">
+                  <div className="flex flex-row gap-2">
+                    <CardTitle className="text-lg">{label}</CardTitle>
+                    {part ? <Badge>{part.brand}</Badge> : <></>}
+                  </div>
+                  <div className="flex flex-row gap-2">
+                    <Button variant="secondary" onClick={() => setOpenCategory(key)} className={part ? "w-1/2 sm:w-auto" : "w-full sm:w-auto"}>
+                      <IoOptionsOutline className="mr-2 size-4" />
+                      {part ? dict.actions.change : dict.actions.choose}
+                    </Button>
+                    {part && (
+                      <Button variant="destructive" onClick={() => removePart(key)} className="w-1/2 sm:w-auto">
+                        <IoTrashOutline className="mr-2 size-4" />
+                        {dict.actions.remove}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {part ? (
@@ -228,21 +206,11 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">{dict.general.chooseCategoryPrefix} {label}.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {dict.general.chooseCategoryPrefix} {label}.
+                    </p>
                   )}
                 </CardContent>
-                <CardFooter className="flex flex-wrap justify-end gap-2">
-                  <Button variant="secondary" onClick={() => setOpenCategory(key)} className="w-full sm:w-auto">
-                    <IoOptionsOutline className="mr-2 size-4" />
-                    {part ? dict.actions.change : dict.actions.choose}
-                  </Button>
-                  {part && (
-                    <Button variant="destructive" onClick={() => removePart(key)} className="w-full sm:w-auto">
-                      <IoTrashOutline className="mr-2 size-4" />
-                      {dict.actions.remove}
-                    </Button>
-                  )}
-                </CardFooter>
               </Card>
             );
           })}
@@ -256,50 +224,42 @@ export default function Home() {
             <CardContent>
               <div className="overflow-x-auto">
                 <Table className="min-w-[640px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{dict.table.category}</TableHead>
-                    <TableHead>{dict.table.part}</TableHead>
-                    <TableHead className="text-right">{dict.table.price}</TableHead>
-                    <TableHead className="text-right">{dict.table.watt}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {localizedCategories.map(({ key, label }) => {
-                    const part = selected[key];
-                    return (
-                      <TableRow key={key}>
-                        <TableCell className="font-medium">{label}</TableCell>
-                        <TableCell>
-                          {part ? (
-                            <>
-                              {part.name}{" "}
-                              <span className="text-muted-foreground text-sm">({part.brand})</span>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground">{dict.general.dash}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                          {part ? formatMYR(part.price, locale) : dict.general.dash}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                          {part ? `≈ ${part.watt} W` : dict.general.dash}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  <TableRow>
-                    <TableCell />
-                    <TableCell className="font-semibold">{dict.table.total}</TableCell>
-                    <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
-                      {formatMYR(total, locale)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
-                      {`≈ ${totalWatt} W`}
-                    </TableCell>
-                  </TableRow>
-                </TableBody></Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{dict.table.category}</TableHead>
+                      <TableHead>{dict.table.part}</TableHead>
+                      <TableHead className="text-right">{dict.table.price}</TableHead>
+                      <TableHead className="text-right">{dict.table.watt}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {localizedCategories.map(({ key, label }) => {
+                      const part = selected[key];
+                      return (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium">{label}</TableCell>
+                          <TableCell>
+                            {part ? (
+                              <>
+                                {part.name} <span className="text-muted-foreground text-sm">({part.brand})</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">{dict.general.dash}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{part ? formatMYR(part.price, locale) : dict.general.dash}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{part ? `≈ ${part.watt} W` : dict.general.dash}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow>
+                      <TableCell />
+                      <TableCell className="font-semibold">{dict.table.total}</TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{formatMYR(total, locale)}</TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{`≈ ${totalWatt} W`}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
@@ -326,11 +286,7 @@ export default function Home() {
 
           {openCategory && (
             <div className="flex-1 overflow-hidden">
-              <DataTable<Part, unknown>
-                columns={getPartColumns(dict, locale, (p) => choosePart(openCategory, p))}
-                data={catalog[openCategory]}
-                filterKey="name"
-              />
+              <DataTable<Part, unknown> columns={getPartColumns(dict, locale, (p) => choosePart(openCategory, p))} data={catalog[openCategory]} filterKey="name" />
             </div>
           )}
 
@@ -343,22 +299,15 @@ export default function Home() {
         </DialogContent>
       </Dialog>
     </div>
-   );
+  );
 }
 
-function getPartColumns(
-  dict: typeof dictEn,
-  locale: Locale,
-  onSelect: (p: Part) => void
-): ColumnDef<Part, unknown>[] {
+function getPartColumns(dict: typeof dictEn, locale: Locale, onSelect: (p: Part) => void): ColumnDef<Part, unknown>[] {
   return [
     {
       accessorKey: "name",
       header: ({ column }: { column: any }) => (
-        <button
-          className="inline-flex items-center gap-1"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <button className="inline-flex items-center gap-1" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           {dict.table.part}
           <ArrowUpDown className="size-4 opacity-60" />
         </button>
@@ -367,10 +316,7 @@ function getPartColumns(
     {
       accessorKey: "brand",
       header: ({ column }: { column: any }) => (
-        <button
-          className="inline-flex items-center gap-1"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <button className="inline-flex items-center gap-1" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           {dict.table.brand}
           <ArrowUpDown className="size-4 opacity-60" />
         </button>
@@ -379,39 +325,27 @@ function getPartColumns(
     {
       accessorKey: "details",
       header: dict.table.details,
-      cell: ({ row }: { row: any }) => (
-        <span className="text-muted-foreground font-mono tabular-nums">{row.original.details}</span>
-      ),
+      cell: ({ row }: { row: any }) => <span className="text-muted-foreground font-mono tabular-nums">{row.original.details}</span>,
     },
     {
       accessorKey: "watt",
       header: ({ column }: { column: any }) => (
-        <button
-          className="inline-flex items-center gap-1 justify-end w-full"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <button className="inline-flex items-center gap-1 justify-end w-full" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           {dict.table.watt}
           <ArrowUpDown className="size-4 opacity-60" />
         </button>
       ),
-      cell: ({ row }: { row: any }) => (
-        <div className="text-right font-mono tabular-nums whitespace-nowrap">{`≈ ${row.original.watt} W`}</div>
-      ),
+      cell: ({ row }: { row: any }) => <div className="text-right font-mono tabular-nums whitespace-nowrap">{`≈ ${row.original.watt} W`}</div>,
     },
     {
       accessorKey: "price",
       header: ({ column }: { column: any }) => (
-        <button
-          className="inline-flex items-center gap-1 justify-end w-full"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <button className="inline-flex items-center gap-1 justify-end w-full" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           {dict.table.price}
           <ArrowUpDown className="size-4 opacity-60" />
         </button>
       ),
-      cell: ({ row }: { row: any }) => (
-        <div className="text-right font-mono tabular-nums whitespace-nowrap">{formatMYR(row.original.price, locale)}</div>
-      ),
+      cell: ({ row }: { row: any }) => <div className="text-right font-mono tabular-nums whitespace-nowrap">{formatMYR(row.original.price, locale)}</div>,
     },
     {
       id: "actions",
