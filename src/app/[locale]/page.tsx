@@ -14,6 +14,8 @@ import { IoRefreshOutline, IoSaveOutline, IoOptionsOutline, IoTrashOutline, IoDo
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { ArrowUpDown } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const locales = ["ms", "en"] as const;
 type Locale = (typeof locales)[number];
@@ -105,11 +107,7 @@ type Dict = typeof dictEn;
 export default function Home() {
   const locale = useLocale();
   const dict: Dict = locale === "en" ? dictEn : dictMs;
-
-  const localizedCategories = baseCategories.map(({ key }) => ({
-    key: key as CategoryKey,
-    label: dict.categories[key as CategoryKey],
-  }));
+  const localizedCategories = baseCategories.map((c) => ({ ...c, label: dict.categories[c.key] }));
 
   const [selected, setSelected] = useState<Record<CategoryKey, Part | null>>({
     cpu: null,
@@ -122,6 +120,53 @@ export default function Home() {
     cooler: null,
   });
   const [openCategory, setOpenCategory] = useState<CategoryKey | null>(null);
+
+  const STORAGE_KEY = "binarig:selected";
+
+  const selectionToIds = (sel: Record<CategoryKey, Part | null>): Record<CategoryKey, string | null> => ({
+    cpu: sel.cpu?.id ?? null,
+    motherboard: sel.motherboard?.id ?? null,
+    gpu: sel.gpu?.id ?? null,
+    ram: sel.ram?.id ?? null,
+    storage: sel.storage?.id ?? null,
+    psu: sel.psu?.id ?? null,
+    case: sel.case?.id ?? null,
+    cooler: sel.cooler?.id ?? null,
+  });
+
+  const idsToSelection = (ids: Record<CategoryKey, string | null>): Record<CategoryKey, Part | null> => ({
+    cpu: ids.cpu ? catalog.cpu.find((p) => p.id === ids.cpu) ?? null : null,
+    motherboard: ids.motherboard ? catalog.motherboard.find((p) => p.id === ids.motherboard) ?? null : null,
+    gpu: ids.gpu ? catalog.gpu.find((p) => p.id === ids.gpu) ?? null : null,
+    ram: ids.ram ? catalog.ram.find((p) => p.id === ids.ram) ?? null : null,
+    storage: ids.storage ? catalog.storage.find((p) => p.id === ids.storage) ?? null : null,
+    psu: ids.psu ? catalog.psu.find((p) => p.id === ids.psu) ?? null : null,
+    case: ids.case ? catalog.case.find((p) => p.id === ids.case) ?? null : null,
+    cooler: ids.cooler ? catalog.cooler.find((p) => p.id === ids.cooler) ?? null : null,
+  });
+
+  // Load initial selection from localStorage
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<CategoryKey, string | null>;
+        setSelected(idsToSelection(parsed));
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
+  }, []);
+
+  // Persist selection to localStorage whenever it changes
+  React.useEffect(() => {
+    try {
+      const ids = selectionToIds(selected);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+    } catch (err) {
+      // ignore save errors
+    }
+  }, [selected]);
 
   const total = useMemo(() => Object.values(selected).reduce((sum, part) => sum + (part?.price ?? 0), 0), [selected]);
 
@@ -139,6 +184,69 @@ export default function Home() {
       cooler: null,
     };
     setSelected(empty);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  const exportToPdf = () => {
+    const doc = new jsPDF();
+
+    // Set document properties and branding header
+    doc.setProperties({
+      title: `BinaRig ${dict.table.title}`,
+      subject: "PC Build Summary",
+      author: "BinaRig",
+      creator: "BinaRig",
+    });
+
+    const marginLeft = 14;
+    doc.setTextColor(2, 132, 199); // sky-600
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("BinaRig", marginLeft, 16);
+
+    const head = [[dict.table.category, dict.table.part, dict.table.price, dict.table.watt]];
+    const body = localizedCategories.map(({ key, label }) => {
+      const part = selected[key];
+      return [
+        label,
+        part ? `${part.name} (${part.brand})` : dict.general.dash,
+        part ? formatMYR(part.price, locale) : dict.general.dash,
+        part ? `${part.watt} W` : dict.general.dash,
+      ];
+    });
+
+    body.push(["", dict.table.total, formatMYR(total, locale), `${totalWatt} W`]);
+
+    autoTable(doc, {
+      head,
+      body,
+      styles: { font: "helvetica" },
+      theme: "striped",
+      headStyles: { fillColor: [2, 132, 199], textColor: 255 }, // sky-600
+      columnStyles: {
+        2: { halign: "right" },
+        3: { halign: "right" },
+      },
+      margin: { top: 28 }, // leave space for header
+      didDrawPage: (data) => {
+        // Re-draw branding on each page
+        doc.setTextColor(2, 132, 199);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("BinaRig", marginLeft, 16);
+
+        doc.setTextColor(60);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text(`${dict.table.title} • ${new Date().toLocaleDateString()} • ${locale.toUpperCase()}`, marginLeft, 23);
+      },
+    });
+
+    doc.save(`binarig-build-summary-${locale}.pdf`);
   };
 
   const choosePart = (key: CategoryKey, part: Part) => {
@@ -247,23 +355,31 @@ export default function Home() {
                               <span className="text-muted-foreground">{dict.general.dash}</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{part ? formatMYR(part.price, locale) : dict.general.dash}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{part ? `≈ ${part.watt} W` : dict.general.dash}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                            {part ? formatMYR(part.price, locale) : dict.general.dash}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                            {part ? `≈ ${part.watt} W` : dict.general.dash}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
                     <TableRow>
                       <TableCell />
                       <TableCell className="font-semibold">{dict.table.total}</TableCell>
-                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{formatMYR(total, locale)}</TableCell>
-                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{`≈ ${totalWatt} W`}</TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
+                        {formatMYR(total, locale)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
+                        {`≈ ${totalWatt} W`}
+                      </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="secondary">
+              <Button variant="secondary" onClick={exportToPdf}>
                 <IoDownloadOutline className="mr-2 size-4" />
                 {dict.actions.exportList}
               </Button>
