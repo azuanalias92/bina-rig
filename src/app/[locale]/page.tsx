@@ -258,6 +258,12 @@ export default function Home() {
     setSelected((s) => ({ ...s, [key]: null }));
   };
 
+  const buyPart = (part: Part) => {
+    const q = encodeURIComponent(`${part.brand} ${part.name}`);
+    const url = locale === "ms" ? `https://shopee.com.my/search?keyword=${q}` : `https://www.google.com/search?q=${q}`;
+    window.open(url, "_blank", "noopener");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-6xl px-4 py-10">
@@ -338,6 +344,7 @@ export default function Home() {
                       <TableHead>{dict.table.part}</TableHead>
                       <TableHead className="text-right">{dict.table.price}</TableHead>
                       <TableHead className="text-right">{dict.table.watt}</TableHead>
+                      <TableHead className="text-right"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -361,6 +368,16 @@ export default function Home() {
                           <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                             {part ? `≈ ${part.watt} W` : dict.general.dash}
                           </TableCell>
+                          <TableCell className="text-right">
+                            {part ? (
+                              <Button size="sm" variant="secondary" onClick={() => buyPart(part)}>
+                                <IoCartOutline className="mr-2 size-4" />
+                                {dict.actions.buy}
+                              </Button>
+                            ) : (
+                              <span className="text-muted-foreground">{dict.general.dash}</span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -373,6 +390,7 @@ export default function Home() {
                       <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
                         {`≈ ${totalWatt} W`}
                       </TableCell>
+                      <TableCell />
                     </TableRow>
                   </TableBody>
                 </Table>

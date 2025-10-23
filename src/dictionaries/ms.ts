@@ -18,6 +18,7 @@ export const dictMs: Dictionary = {
     checkout: "Bayar",
     select: "Pilih",
     close: "Tutup",
+    buy: "Beli",
   },
   table: {
     title: "Ringkasan Binaan",

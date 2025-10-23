@@ -16,6 +16,7 @@ export type Dictionary = {
     checkout: string;
     select: string;
     close: string;
+    buy: string;
   };
   table: {
     title: string;
@@ -66,6 +67,7 @@ export const dictEn: Dictionary = {
     checkout: "Checkout",
     select: "Select",
     close: "Close",
+    buy: "Buy",
   },
   table: {
     title: "Build Summary",
