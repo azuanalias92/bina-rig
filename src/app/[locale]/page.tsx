@@ -108,41 +108,41 @@ export default function Home() {
   const locale = useLocale();
   const dict: Dict = locale === "en" ? dictEn : dictMs;
   const localizedCategories = baseCategories.map((c) => ({ ...c, label: dict.categories[c.key] }));
-
-  const [selected, setSelected] = useState<Record<CategoryKey, Part | null>>({
-    cpu: null,
-    motherboard: null,
-    gpu: null,
-    ram: null,
-    storage: null,
-    psu: null,
-    case: null,
-    cooler: null,
+  const [selected, setSelected] = useState<Record<CategoryKey, Part[]>>({
+    cpu: [],
+    motherboard: [],
+    gpu: [],
+    ram: [],
+    storage: [],
+    psu: [],
+    case: [],
+    cooler: [],
   });
+  const multiKeys: CategoryKey[] = ["ram", "storage", "gpu"];
   const [openCategory, setOpenCategory] = useState<CategoryKey | null>(null);
 
   const STORAGE_KEY = "binarig:selected";
 
-  const selectionToIds = (sel: Record<CategoryKey, Part | null>): Record<CategoryKey, string | null> => ({
-    cpu: sel.cpu?.id ?? null,
-    motherboard: sel.motherboard?.id ?? null,
-    gpu: sel.gpu?.id ?? null,
-    ram: sel.ram?.id ?? null,
-    storage: sel.storage?.id ?? null,
-    psu: sel.psu?.id ?? null,
-    case: sel.case?.id ?? null,
-    cooler: sel.cooler?.id ?? null,
+  const selectionToIds = (sel: Record<CategoryKey, Part[]>): Record<CategoryKey, string[]> => ({
+    cpu: sel.cpu.map((p) => p.id),
+    motherboard: sel.motherboard.map((p) => p.id),
+    gpu: sel.gpu.map((p) => p.id),
+    ram: sel.ram.map((p) => p.id),
+    storage: sel.storage.map((p) => p.id),
+    psu: sel.psu.map((p) => p.id),
+    case: sel.case.map((p) => p.id),
+    cooler: sel.cooler.map((p) => p.id),
   });
 
-  const idsToSelection = (ids: Record<CategoryKey, string | null>): Record<CategoryKey, Part | null> => ({
-    cpu: ids.cpu ? catalog.cpu.find((p) => p.id === ids.cpu) ?? null : null,
-    motherboard: ids.motherboard ? catalog.motherboard.find((p) => p.id === ids.motherboard) ?? null : null,
-    gpu: ids.gpu ? catalog.gpu.find((p) => p.id === ids.gpu) ?? null : null,
-    ram: ids.ram ? catalog.ram.find((p) => p.id === ids.ram) ?? null : null,
-    storage: ids.storage ? catalog.storage.find((p) => p.id === ids.storage) ?? null : null,
-    psu: ids.psu ? catalog.psu.find((p) => p.id === ids.psu) ?? null : null,
-    case: ids.case ? catalog.case.find((p) => p.id === ids.case) ?? null : null,
-    cooler: ids.cooler ? catalog.cooler.find((p) => p.id === ids.cooler) ?? null : null,
+  const idsToSelection = (ids: Record<CategoryKey, string[]>): Record<CategoryKey, Part[]> => ({
+    cpu: catalog.cpu.filter((p) => ids.cpu?.includes(p.id)),
+    motherboard: catalog.motherboard.filter((p) => ids.motherboard?.includes(p.id)),
+    gpu: catalog.gpu.filter((p) => ids.gpu?.includes(p.id)),
+    ram: catalog.ram.filter((p) => ids.ram?.includes(p.id)),
+    storage: catalog.storage.filter((p) => ids.storage?.includes(p.id)),
+    psu: catalog.psu.filter((p) => ids.psu?.includes(p.id)),
+    case: catalog.case.filter((p) => ids.case?.includes(p.id)),
+    cooler: catalog.cooler.filter((p) => ids.cooler?.includes(p.id)),
   });
 
   // Load initial selection from localStorage
@@ -150,7 +150,7 @@ export default function Home() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Record<CategoryKey, string | null>;
+        const parsed = JSON.parse(raw) as Record<CategoryKey, string[]>;
         setSelected(idsToSelection(parsed));
       }
     } catch (err) {
@@ -168,20 +168,19 @@ export default function Home() {
     }
   }, [selected]);
 
-  const total = useMemo(() => Object.values(selected).reduce((sum, part) => sum + (part?.price ?? 0), 0), [selected]);
-
-  const totalWatt = useMemo(() => Object.values(selected).reduce((sum, part) => sum + (part?.watt ?? 0), 0), [selected]);
+  const total = useMemo(() => Object.values(selected).reduce((sum, arr) => sum + arr.reduce((s, p) => s + p.price, 0), 0), [selected]);
+  const totalWatt = useMemo(() => Object.values(selected).reduce((sum, arr) => sum + arr.reduce((s, p) => s + p.watt, 0), 0), [selected]);
 
   const resetAll = () => {
-    const empty: Record<CategoryKey, Part | null> = {
-      cpu: null,
-      motherboard: null,
-      gpu: null,
-      ram: null,
-      storage: null,
-      psu: null,
-      case: null,
-      cooler: null,
+    const empty: Record<CategoryKey, Part[]> = {
+      cpu: [],
+      motherboard: [],
+      gpu: [],
+      ram: [],
+      storage: [],
+      psu: [],
+      case: [],
+      cooler: [],
     };
     setSelected(empty);
     try {
@@ -208,18 +207,29 @@ export default function Home() {
     doc.setFontSize(16);
     doc.text("BinaRig", marginLeft, 16);
 
-    const head = [[dict.table.category, dict.table.part, dict.table.price, dict.table.watt]];
-    const body = localizedCategories.map(({ key, label }) => {
-      const part = selected[key];
-      return [
-        label,
-        part ? `${part.name} (${part.brand})` : dict.general.dash,
-        part ? formatMYR(part.price, locale) : dict.general.dash,
-        part ? `${part.watt} W` : dict.general.dash,
-      ];
+    const head = [[dict.table.category, dict.table.part, dict.table.price, dict.table.watt, dict.actions.buy]];
+    const flattened = localizedCategories.flatMap(({ key, label }) => {
+      const parts = selected[key];
+      if (parts.length === 0) {
+        return [{ label, part: null as Part | null }];
+      }
+      return parts.map((p) => ({ label, part: p }));
+    });
+    const body = flattened.map((row) => [
+      row.label,
+      row.part ? `${row.part.name} (${row.part.brand})` : dict.general.dash,
+      row.part ? formatMYR(row.part.price, locale) : dict.general.dash,
+      row.part ? `${row.part.watt} W` : dict.general.dash,
+      row.part ? dict.actions.buy : dict.general.dash,
+    ]);
+
+    const buyLinks = flattened.map((row) => {
+      if (!row.part) return null;
+      const q = encodeURIComponent(`${row.part.brand} ${row.part.name}`);
+      return locale === "ms" ? `https://shopee.com.my/search?keyword=${q}` : `https://www.google.com/search?q=${q}`;
     });
 
-    body.push(["", dict.table.total, formatMYR(total, locale), `${totalWatt} W`]);
+    body.push(["", dict.table.total, formatMYR(total, locale), `${totalWatt} W`, ""]);
 
     autoTable(doc, {
       head,
@@ -230,6 +240,7 @@ export default function Home() {
       columnStyles: {
         2: { halign: "right" },
         3: { halign: "right" },
+        4: { halign: "right" },
       },
       margin: { top: 28 }, // leave space for header
       didDrawPage: (data) => {
@@ -244,18 +255,40 @@ export default function Home() {
         doc.setFontSize(11);
         doc.text(`${dict.table.title} • ${new Date().toLocaleDateString()} • ${locale.toUpperCase()}`, marginLeft, 23);
       },
+      didDrawCell: (data) => {
+        if (data.section === "body" && data.column.index === 4) {
+          const url = buyLinks[data.row.index];
+          if (url) {
+            doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url });
+          }
+        }
+      },
     });
 
     doc.save(`binarig-build-summary-${locale}.pdf`);
   };
 
   const choosePart = (key: CategoryKey, part: Part) => {
-    setSelected((s) => ({ ...s, [key]: part }));
+    setSelected((s) => {
+      const isMulti = multiKeys.includes(key);
+      const existing = s[key];
+      if (isMulti) {
+        if (existing.some((p) => p.id === part.id)) return s;
+        return { ...s, [key]: [...existing, part] };
+      } else {
+        return { ...s, [key]: [part] };
+      }
+    });
     setOpenCategory(null);
   };
 
-  const removePart = (key: CategoryKey) => {
-    setSelected((s) => ({ ...s, [key]: null }));
+  const removePart = (key: CategoryKey, part?: Part) => {
+    setSelected((s) => {
+      if (!part) {
+        return { ...s, [key]: [] };
+      }
+      return { ...s, [key]: s[key].filter((p) => p.id !== part.id) };
+    });
   };
 
   const buyPart = (part: Part) => {
@@ -286,20 +319,26 @@ export default function Home() {
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {localizedCategories.map(({ key, label }) => {
-            const part = selected[key];
+            const parts = selected[key];
+            const has = parts.length > 0;
+            const isMulti = multiKeys.includes(key);
             return (
               <Card key={key} className="flex flex-col">
                 <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-0">
                   <div className="flex flex-row gap-2">
                     <CardTitle className="text-lg">{label}</CardTitle>
-                    {part ? <Badge>{part.brand}</Badge> : <></>}
+                    {has ? (
+                      isMulti ? <Badge>{`${parts.length}x`}</Badge> : <Badge>{parts[0].brand}</Badge>
+                    ) : (
+                      <></>
+                    )}
                   </div>
                   <div className="flex flex-row gap-2">
-                    <Button variant="secondary" onClick={() => setOpenCategory(key)} className={part ? "w-1/2 sm:w-auto" : "w-full sm:w-auto"}>
+                    <Button variant="secondary" onClick={() => setOpenCategory(key)} className={has ? "w-1/2 sm:w-auto" : "w-full sm:w-auto"}>
                       <IoOptionsOutline className="mr-2 size-4" />
-                      {part ? dict.actions.change : dict.actions.choose}
+                      {has ? dict.actions.change : dict.actions.choose}
                     </Button>
-                    {part && (
+                    {has && (
                       <Button variant="destructive" onClick={() => removePart(key)} className="w-1/2 sm:w-auto">
                         <IoTrashOutline className="mr-2 size-4" />
                         {dict.actions.remove}
@@ -308,16 +347,26 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {part ? (
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium">{part.name}</p>
-                        <p className="text-sm text-muted-foreground font-mono tabular-nums">{part.details}</p>
-                        <p className="text-xs text-muted-foreground font-mono tabular-nums">≈ {part.watt} W</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold font-mono tabular-nums">{formatMYR(part.price, locale)}</p>
-                      </div>
+                  {has ? (
+                    <div className="flex flex-col gap-2">
+                      {parts.map((p) => (
+                        <div key={p.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-medium">{p.name}</p>
+                            <p className="text-sm text-muted-foreground font-mono tabular-nums">{p.details}</p>
+                            <p className="text-xs text-muted-foreground font-mono tabular-nums">{`≈ ${p.watt} W`}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold font-mono tabular-nums">{formatMYR(p.price, locale)}</p>
+                            {isMulti ? (
+                              <Button variant="destructive" size="sm" onClick={() => removePart(key, p)} className="mt-1">
+                                <IoTrashOutline className="mr-2 size-4" />
+                                {dict.actions.remove}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -348,48 +397,41 @@ export default function Home() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {localizedCategories.map(({ key, label }) => {
-                      const part = selected[key];
-                      return (
-                        <TableRow key={key}>
+                    {localizedCategories.flatMap(({ key, label }) => {
+                      const parts = selected[key];
+                      const rows = parts.length > 0 ? parts.map((p) => ({ part: p })) : [{ part: null as Part | null }];
+                      return rows.map((row, idx) => (
+                        <TableRow key={`${key}-${row.part ? row.part.id : "empty"}-${idx}`}>
                           <TableCell className="font-medium">{label}</TableCell>
                           <TableCell>
-                            {part ? (
+                            {row.part ? (
                               <>
-                                {part.name} <span className="text-muted-foreground text-sm">({part.brand})</span>
+                                {row.part.name} <span className="text-muted-foreground text-sm">({row.part.brand})</span>
                               </>
                             ) : (
                               <span className="text-muted-foreground">{dict.general.dash}</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                            {part ? formatMYR(part.price, locale) : dict.general.dash}
-                          </TableCell>
-                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                            {part ? `≈ ${part.watt} W` : dict.general.dash}
-                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{row.part ? formatMYR(row.part.price, locale) : dict.general.dash}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">{row.part ? `≈ ${row.part.watt} W` : dict.general.dash}</TableCell>
                           <TableCell className="text-right">
-                            {part ? (
-                              <Button size="sm" variant="secondary" onClick={() => buyPart(part)}>
-                                <IoCartOutline className="mr-2 size-4" />
-                                {dict.actions.buy}
-                              </Button>
+                            {row.part ? (
+                              <Button size="sm" onClick={() => buyPart(row.part!)}>
+                                 <IoCartOutline className="mr-2 size-4" />
+                                 {dict.actions.buy}
+                               </Button>
                             ) : (
                               <span className="text-muted-foreground">{dict.general.dash}</span>
                             )}
                           </TableCell>
                         </TableRow>
-                      );
+                      ));
                     })}
                     <TableRow>
                       <TableCell />
                       <TableCell className="font-semibold">{dict.table.total}</TableCell>
-                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
-                        {formatMYR(total, locale)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">
-                        {`≈ ${totalWatt} W`}
-                      </TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{formatMYR(total, locale)}</TableCell>
+                      <TableCell className="text-right font-semibold font-mono tabular-nums whitespace-nowrap">{`≈ ${totalWatt} W`}</TableCell>
                       <TableCell />
                     </TableRow>
                   </TableBody>
@@ -401,10 +443,10 @@ export default function Home() {
                 <IoDownloadOutline className="mr-2 size-4" />
                 {dict.actions.exportList}
               </Button>
-              <Button>
+              {/* <Button>
                 <IoCartOutline className="mr-2 size-4" />
                 {dict.actions.checkout}
-              </Button>
+              </Button> */}
             </CardFooter>
           </Card>
         </section>
