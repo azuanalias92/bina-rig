@@ -37,7 +37,7 @@ export default function RootLayout({
           <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
 
           <footer className="border-t bg-sky-50 text-sky-900 dark:bg-sky-900 dark:text-sky-50">
-            <div className="mx-auto max-w-6xl px-4 py-6 text-sm">
+            <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-center">
               © {new Date().getFullYear()} BinaRig. All rights reserved.
             </div>
           </footer>
