@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,6 +120,8 @@ export default function Home() {
   });
   const multiKeys: CategoryKey[] = ["ram", "storage", "gpu"];
   const [openCategory, setOpenCategory] = useState<CategoryKey | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const STORAGE_KEY = "binarig:selected";
 
@@ -318,12 +320,16 @@ export default function Home() {
         </header>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {localizedCategories.map(({ key, label }) => {
+          {localizedCategories.map(({ key, label }, idx) => {
             const parts = selected[key];
             const has = parts.length > 0;
             const isMulti = multiKeys.includes(key);
             return (
-              <Card key={key} className="flex flex-col">
+              <Card
+                key={key}
+                className={mounted ? "flex flex-col" : "flex flex-col opacity-0"}
+                style={{ animationDuration: "600ms", animationDelay: `${idx * 120}ms` }}
+              >
                 <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-0">
                   <div className="flex flex-row gap-2">
                     <CardTitle className="text-lg">{label}</CardTitle>
