@@ -17,6 +17,8 @@ import { ArrowUpDown } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
+const thumbForLabel = (l: string) => `https://placehold.co/96x96?text=${encodeURIComponent(l)}`;
+
 const locales = ["ms", "en"] as const;
 type Locale = (typeof locales)[number];
 
@@ -357,10 +359,13 @@ export default function Home() {
                     <div className="flex flex-col gap-2">
                       {parts.map((p) => (
                         <div key={p.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="font-medium">{p.name}</p>
-                            <p className="text-sm text-muted-foreground font-mono tabular-nums">{p.details}</p>
-                            <p className="text-xs text-muted-foreground font-mono tabular-nums">{`≈ ${p.watt} W`}</p>
+                          <div className="flex items-center gap-3">
+                            <img src={thumbForLabel(label)} alt={`${p.brand} ${p.name}`} className="size-12 rounded-md object-cover bg-muted" loading="lazy" />
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              <p className="text-sm text-muted-foreground font-mono tabular-nums">{p.details}</p>
+                              <p className="text-xs text-muted-foreground font-mono tabular-nums">{`≈ ${p.watt} W`}</p>
+                            </div>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold font-mono tabular-nums">{formatMYR(p.price, locale)}</p>
@@ -407,13 +412,16 @@ export default function Home() {
                       const parts = selected[key];
                       const rows = parts.length > 0 ? parts.map((p) => ({ part: p })) : [{ part: null as Part | null }];
                       return rows.map((row, idx) => (
-                        <TableRow key={`${key}-${row.part ? row.part.id : "empty"}-${idx}`}>
+                        <TableRow key={`${key}-${row.part ? row.part.id : "empty"}-${idx}`} style={{ animationDuration: "600ms" }}>
                           <TableCell className="font-medium">{label}</TableCell>
                           <TableCell>
                             {row.part ? (
-                              <>
-                                {row.part.name} <span className="text-muted-foreground text-sm">({row.part.brand})</span>
-                              </>
+                              <div className="flex items-center gap-3">
+                                <img src={thumbForLabel(label)} alt={`${row.part.brand} ${row.part.name}`} className="size-10 rounded-md object-cover bg-muted" loading="lazy" />
+                                <div>
+                                  {row.part.name} <span className="text-muted-foreground text-sm">({row.part.brand})</span>
+                                </div>
+                              </div>
                             ) : (
                               <span className="text-muted-foreground">{dict.general.dash}</span>
                             )}
@@ -423,9 +431,9 @@ export default function Home() {
                           <TableCell className="text-right">
                             {row.part ? (
                               <Button size="sm" onClick={() => buyPart(row.part!)}>
-                                 <IoCartOutline className="mr-2 size-4" />
-                                 {dict.actions.buy}
-                               </Button>
+                                <IoCartOutline className="mr-2 size-4" />
+                                {dict.actions.buy}
+                              </Button>
                             ) : (
                               <span className="text-muted-foreground">{dict.general.dash}</span>
                             )}
