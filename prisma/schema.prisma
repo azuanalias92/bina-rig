@@ -1,0 +1,30 @@
+// Prisma Schema for Supabase Postgres
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id    String  @id @default(cuid())
+  key   String  @unique
+  label String
+  parts Part[]
+}
+
+model Part {
+  id          String   @id
+  name        String
+  brand       String
+  price       Float
+  watt        Int
+  details     String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}

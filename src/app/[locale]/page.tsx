@@ -109,7 +109,9 @@ type Dict = typeof dictEn;
 export default function Home() {
   const locale = useLocale();
   const dict: Dict = locale === "en" ? dictEn : dictMs;
-  const localizedCategories = baseCategories.map((c) => ({ ...c, label: dict.categories[c.key] }));
+  const [categories, setCategories] = useState<{ key: CategoryKey; label: string }[]>([...baseCategories]);
+  const localizedCategories = categories.map((c) => ({ ...c, label: dict.categories[c.key] }));
+  const [catalogState, setCatalogState] = useState<Catalog | null>(null);
   const [selected, setSelected] = useState<Record<CategoryKey, Part[]>>({
     cpu: [],
     motherboard: [],
@@ -139,14 +141,14 @@ export default function Home() {
   });
 
   const idsToSelection = (ids: Record<CategoryKey, string[]>): Record<CategoryKey, Part[]> => ({
-    cpu: catalog.cpu.filter((p) => ids.cpu?.includes(p.id)),
-    motherboard: catalog.motherboard.filter((p) => ids.motherboard?.includes(p.id)),
-    gpu: catalog.gpu.filter((p) => ids.gpu?.includes(p.id)),
-    ram: catalog.ram.filter((p) => ids.ram?.includes(p.id)),
-    storage: catalog.storage.filter((p) => ids.storage?.includes(p.id)),
-    psu: catalog.psu.filter((p) => ids.psu?.includes(p.id)),
-    case: catalog.case.filter((p) => ids.case?.includes(p.id)),
-    cooler: catalog.cooler.filter((p) => ids.cooler?.includes(p.id)),
+    cpu: (catalogState ?? catalog).cpu.filter((p) => ids.cpu?.includes(p.id)),
+    motherboard: (catalogState ?? catalog).motherboard.filter((p) => ids.motherboard?.includes(p.id)),
+    gpu: (catalogState ?? catalog).gpu.filter((p) => ids.gpu?.includes(p.id)),
+    ram: (catalogState ?? catalog).ram.filter((p) => ids.ram?.includes(p.id)),
+    storage: (catalogState ?? catalog).storage.filter((p) => ids.storage?.includes(p.id)),
+    psu: (catalogState ?? catalog).psu.filter((p) => ids.psu?.includes(p.id)),
+    case: (catalogState ?? catalog).case.filter((p) => ids.case?.includes(p.id)),
+    cooler: (catalogState ?? catalog).cooler.filter((p) => ids.cooler?.includes(p.id)),
   });
 
   // Load initial selection from localStorage
@@ -171,6 +173,46 @@ export default function Home() {
       // ignore save errors
     }
   }, [selected]);
+
+  // Fetch categories and parts from API, fallback to static when unavailable
+  useEffect(() => {
+    (async () => {
+      try {
+        const resCats = await fetch("/api/categories");
+        const apiCats = await resCats.json();
+        if (Array.isArray(apiCats) && apiCats.every((c: any) => c.key && c.label)) {
+          setCategories(apiCats);
+        }
+      } catch (e) {
+        // ignore; fallback remains
+      }
+      try {
+        const resParts = await fetch("/api/parts");
+        const apiParts = await resParts.json();
+        if (Array.isArray(apiParts)) {
+          const byCat: Catalog = {
+            cpu: [],
+            motherboard: [],
+            gpu: [],
+            ram: [],
+            storage: [],
+            psu: [],
+            case: [],
+            cooler: [],
+          };
+          apiParts.forEach((p: any) => {
+            const key = p.categoryKey as CategoryKey;
+            if (key && (byCat as any)[key]) {
+              (byCat as any)[key].push({ id: p.id, name: p.name, brand: p.brand, price: p.price, watt: p.watt, details: p.details });
+            }
+          });
+          setCatalogState(byCat);
+        }
+      } catch (e) {
+        // ignore; fallback remains
+      }
+    })();
+  }, [locale]);
 
   const total = useMemo(() => Object.values(selected).reduce((sum, arr) => sum + arr.reduce((s, p) => s + p.price, 0), 0), [selected]);
   const totalWatt = useMemo(() => Object.values(selected).reduce((sum, arr) => sum + arr.reduce((s, p) => s + p.watt, 0), 0), [selected]);
@@ -327,19 +369,11 @@ export default function Home() {
             const has = parts.length > 0;
             const isMulti = multiKeys.includes(key);
             return (
-              <Card
-                key={key}
-                className={mounted ? "flex flex-col" : "flex flex-col opacity-0"}
-                style={{ animationDuration: "600ms", animationDelay: `${idx * 120}ms` }}
-              >
+              <Card key={key} className={mounted ? "flex flex-col" : "flex flex-col opacity-0"} style={{ animationDuration: "600ms", animationDelay: `${idx * 120}ms` }}>
                 <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-0">
                   <div className="flex flex-row gap-2">
                     <CardTitle className="text-lg">{label}</CardTitle>
-                    {has ? (
-                      isMulti ? <Badge>{`${parts.length}x`}</Badge> : <Badge>{parts[0].brand}</Badge>
-                    ) : (
-                      <></>
-                    )}
+                    {has ? isMulti ? <Badge>{`${parts.length}x`}</Badge> : <Badge>{parts[0].brand}</Badge> : <></>}
                   </div>
                   <div className="flex flex-row gap-2">
                     <Button variant="secondary" onClick={() => setOpenCategory(key)} className={has ? "w-1/2 sm:w-auto" : "w-full sm:w-auto"}>
@@ -476,7 +510,11 @@ export default function Home() {
 
           {openCategory && (
             <div className="flex-1 overflow-hidden">
-              <DataTable<Part, unknown> columns={getPartColumns(dict, locale, (p) => choosePart(openCategory, p))} data={catalog[openCategory]} filterKey="name" />
+              <DataTable<Part, unknown>
+                columns={getPartColumns(dict, locale, (p) => choosePart(openCategory, p))}
+                data={(catalogState ?? catalog)[openCategory]}
+                filterKey="name"
+              />
             </div>
           )}
 
